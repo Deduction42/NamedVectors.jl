@@ -1,0 +1,151 @@
+#============================================================================================================
+This package should be called "NamedVectors" 
+    The main feature (symbolic acces) works only with linear indexing
+    LArray{Syms,T} can wrap an array (avoids work) but is symbolically indexed like a Vector
+    NamedSVector{Syms,T} is a vector (drop support for NSArray) only needed for result of multiple indices
+============================================================================================================#
+
+import Base.@assert
+import Base.@propagate_inbounds
+using StaticArrays 
+
+abstract type AbstractLabelledArray{Syms,T,N} <: AbstractArray{T,N} end
+const AbstractLabelledMatrix{Syms,T} = AbstractLabelledArray{Syms,T,2} 
+const AbstractLabelledVector{Syms,T} = AbstractLabelledArray{Syms,T,1} 
+
+"""
+    LArray{Syms,D<:AbstractArray,T,N}
+
+Wraps an array of type "D<:AbstractArray{T,N}" with a list of symbolic names.
+These names can be used to index into the original array linearly.
+"""
+struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
+    data::D
+    function LArray{Syms,D,T,N}(data::AbstractArray) where {Syms,D,T,N} 
+        _check_symbols(Syms)
+        _check_lengths(Syms, data)
+        (D <: AbstractArray{T,N}) || "Data type parameter $(D) must be of type AbstractArray{$(T),$(N)}"
+        return new{Syms,D,T,N}(data)
+    end
+    function LArray{Syms,D}(data::AbstractArray{T,N}) where {Syms,D,T,N} 
+        _check_symbols(Syms)
+        _check_lengths(Syms, data)
+        return new{Syms,D,T,N}(data)
+    end
+    function LArray{Syms}(data::D) where {Syms,T,N,D<:AbstractArray{T,N}} 
+        _check_symbols(Syms)
+        _check_lengths(Syms, data)
+        return new{Syms,D,T,N}(data)
+    end
+end
+const LVector{Syms,D,T} = LArray{Syms,D,T,1}
+const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
+
+"""
+    SLVector{Syms,T,L}
+
+A special type of "LArray" that is designed to mimic the NamedTuple API. Since the underlying data
+is actually a Tuple, it is essentially a NamedTuple with a uniform type and vector-like behaviour
+"""
+struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
+    data::SVector{L,T}
+    function SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L}
+        _check_symbols(Syms)
+        (L == length(Syms) == length(data)) || "Lenth parameter must match the number of elements must match the number of names"
+        return new{Syms,T,L}(data)
+    end
+    function SLVector{Syms,T}(data::AbstractArray) where {Syms,T}
+        _check_symbols(Syms)
+        _check_lengths(Syms, data)
+        L = length(Syms)
+        return new{Syms,T,L}(data)
+    end
+    function SLVector{Syms}(data::AbstractArray{T}) where {Syms,T}
+        _check_symbols(Syms)
+        _check_lengths(Syms, data)
+        L = length(Syms)
+        return new{Syms,T,L}(data)
+    end
+end
+
+
+"""
+    SymbolicIndexer{Syms}
+
+A type that returns the numeric index of the list of symbols in Syms. It essentially functions as a 
+NamedTuple{Syms}(OneTo(length(Syms)))[sym], or findfirst(i->i==sym, Syms).
+
+For example, SymbolicIndexer((:a,:b,:c))[:b] will return "2"
+"""
+struct SymbolicIndexer{Syms} end
+SymbolicIndexer(x::NTuple{N,Symbol}) where N = SymbolicIndexer{x}()
+
+@generated function findin(::Type{SymbolicIndexer{Syms}}, ::Val{ind}) where {Syms, ind}
+    idx  = findfirst(s -> s == ind, Syms)
+    if idx === nothing
+        error("Item $(ind) was not found in labels $(Syms)")
+    else
+        :($idx)
+    end
+end
+
+Base.getproperty(idxr::SymbolicIndexer{Syms}, ind::Symbol) where Syms = findin(SymbolicIndexer{Syms}, Val(ind))
+Base.getindex(idxr::SymbolicIndexer{Syms}, ind::Symbol) where Syms = findin(SymbolicIndexer{Syms}, Val(ind))
+function Base.getindex(idxr::SymbolicIndexer{Syms}, ind::NTuple{N,Symbol}) where {Syms,N}
+    return SVector{N}(map(i->idxr[i], ind))
+end
+
+
+#Interop with Tuple/NamedTuple
+(::Type{SLV})(data::Tuple) where {Syms, SLV<:SLVector{Syms}} = SLV(SVector(data))
+SLVector(data::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(data)))
+SLVector{Syms}(data::NamedTuple) where Syms = SLVector(data[Syms])
+SLVector(;kwargs...) = SLVector(values(kwargs))
+NamedTuple(data::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(convert(NTuple{length(syms)}, values(data)))
+
+#Interop with dictionaries
+(::Type{SLV})(data::Dict{Symbol}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), Syms))
+(::Type{SLV})(data::Dict{String}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), map(string, Syms)))
+
+#Self-selection
+SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = data[Syms]
+SLVector{Syms,T}(data::AbstractLabelledArray{Syms0}) where {Syms,Syms0,T} = SLVector{Syms,T}(values(data)[SymbolicIndexer{Syms0}[Syms]])
+
+#Main AbstractArray API
+Base.values(x::AbstractLabelledArray) = x.data
+Base.propertynames(x::AbstractLabelledArray{Syms}) where Syms = Syms
+Base.keys(x::AbstractLabelledArray{Syms}) where Syms = Syms
+Base.size(x::AbstractLabelledArray) = size(values(x))
+
+#Indexing of AbstractLabelledArray
+@propagate_inbounds Base.getindex(x::AbstractLabelledArray, inds...) = getindex(values(x), inds...)
+
+@propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::Symbol) where Syms
+    num_ind = SymbolicIndexer(Syms)[ind]
+    data = values(x)
+    return data[offset(num_ind, data)]
+end
+
+@propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::NTuple{N,Symbol}) where {Syms,N}
+    vec_ind = SymbolicIndexer(Syms)[ind]
+    data = values(x)
+    return data[offset(vec_ind, data)]
+end
+
+function offset(ind, data::AbstractArray)
+    ind0 = firstindex(data)
+    return isone(ind0) ? ind : ind + (ind0-1) 
+end
+
+#Symbol/data length check subroutines
+_check_symbols(Syms) = (Syms isa NTuple{L,Symbol} where L) || "Expected an NTuple{N,Symbol} for first parameter"
+_check_lengths(Syms, data) = (length(Syms) == length(data)) || "Number of elements must match the number of names"
+
+
+nv = LArray{(:a,:b,:c)}(1:3)
+nv = LArray{(:a,:b,:c),Vector{Float64}}(1:3)
+nv = SLVector{(:a,:b,:c)}(1:3)
+nv = SLVector{(:a,:b,:c),Float64}(1:3)
+
+nv_ab = nv[(:a,:b)]
+
