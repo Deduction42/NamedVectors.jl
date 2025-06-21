@@ -134,6 +134,7 @@ Base.values(x::AbstractLabelledArray) = x.data
 Base.propertynames(x::AbstractLabelledArray{Syms}) where Syms = Syms
 Base.keys(x::AbstractLabelledArray{Syms}) where Syms = Syms
 Base.size(x::AbstractLabelledArray) = size(values(x))
+Base.:(==)(x1::AbstractLabelledArray{Syms1}, x2::AbstractLabelledArray{Syms2}) = (Syms1==Syms2) && (values(x1)==values(x2))
 
 #Indexing of AbstractLabelledArray
 @propagate_inbounds Base.getindex(x::AbstractLabelledArray, inds...) = getindex(values(x), inds...)
