@@ -22,24 +22,34 @@ These names can be used to index into the original array linearly.
 struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
     data::D
     function LArray{Syms,D,T,N}(data::AbstractArray) where {Syms,D,T,N} 
-        _check_symbols(Syms, :LArray)
+        (D <: AbstractArray{T,N}) || throw(ArgumentError("Data type parameter $(D) must be of type AbstractArray{$(T),$(N)}"))
+        _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
-        (D <: AbstractArray{T,N}) || "Data type parameter $(D) must be of type AbstractArray{$(T),$(N)}"
         return new{Syms,D,T,N}(data)
     end
-    function LArray{Syms,D}(data::AbstractArray{T,N}) where {Syms,D,T,N} 
-        _check_symbols(Syms, :LArray)
+    function LArray{Syms,D}(data::AbstractArray) where {Syms,T,N,D<:AbstractArray{T,N}} 
+        _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
         return new{Syms,D,T,N}(data)
     end
     function LArray{Syms}(data::D) where {Syms,T,N,D<:AbstractArray{T,N}} 
-        _check_symbols(Syms, :LArray)
+        _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
         return new{Syms,D,T,N}(data)
     end
 end
+
 const LVector{Syms,D,T} = LArray{Syms,D,T,1}
+LVector{Syms,D,T}(data::AbstractVector)  where {Syms,D,T} = LArray{Syms,D,T}(data)
+LVector{Syms,D}(data::AbstractVector) where {Syms,D} = LArray{Syms,D}(data)
+LVector{Syms}(data::AbstractVector) where {Syms} = LArray{Syms}(data)
+(::Type{LV})(data::AbstractArray) where LV<:AbstractVector = LV(reshape(data,:))
+
 const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
+LMatrix{Syms,D,T}(data::AbstractMatrix)  where {Syms,D,T} = LArray{Syms,D,T}(data)
+LMatrix{Syms,D}(data::AbstractMatrix) where {Syms,D} = LArray{Syms,D}(data)
+LMatrix{Syms}(data::AbstractMatrix) where {Syms} = LArray{Syms}(data)
+
 
 """
     SLVector{Syms,T,L}
@@ -50,18 +60,18 @@ is actually a Tuple, it is essentially a NamedTuple with a uniform type and vect
 struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
     data::SVector{L,T}
     function SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L}
-        _check_symbols(Syms, :SLVector)
+        _check_labels(Syms, :SLVector)
         (L == length(Syms) == length(data)) || "Lenth parameter must match the number of elements must match the number of names"
         return new{Syms,T,L}(data)
     end
     function SLVector{Syms,T}(data::AbstractArray) where {Syms,T}
-        _check_symbols(Syms, :SLVector)
+        _check_labels(Syms, :SLVector)
         _check_lengths(Syms, data)
         L = length(Syms)
         return new{Syms,T,L}(data)
     end
     function SLVector{Syms}(data::AbstractArray{T}) where {Syms,T}
-        _check_symbols(Syms, :SLVector)
+        _check_labels(Syms, :SLVector)
         _check_lengths(Syms, data)
         L = length(Syms)
         return new{Syms,T,L}(data)
@@ -77,7 +87,9 @@ NamedTuple{Syms}(OneTo(length(Syms)))[sym], or findfirst(i->i==sym, Syms).
 
 For example, SymbolicIndexer((:a,:b,:c))[:b] will return "2"
 """
-struct SymbolicIndexer{Syms} end
+struct SymbolicIndexer{Syms} 
+    SymbolicIndexer{Syms}() where Syms = new{_check_labels(Syms, :SymbolicIndexer)}()
+end
 SymbolicIndexer(x::NTuple{N,Symbol}) where N = SymbolicIndexer{x}()
 
 @generated function findin(::Type{SymbolicIndexer{Syms}}, ::Val{ind}) where {Syms, ind}
@@ -157,10 +169,10 @@ function offset(ind, data::AbstractArray)
 end
 
 #Symbol/data length check subroutines
-function _check_symbols(Syms, func) 
+function _check_labels(Syms, func) 
     (Syms isa NTuple{L,Symbol} where L) || throw(TypeError(func, "Syms", NTuple{N,Symbol} where N, Syms))
-    allunique(Syms) || error("Duplicate name in $(func){$(Syms)}")
-    return true
+    allunique(Syms) || throw(ArgumentError("Duplicate name in $(func){$(Syms)}"))
+    return Syms
 end
 
-_check_lengths(Syms, data) = (length(Syms) == length(data)) || "Number of elements must match the number of names"
+_check_lengths(Syms, data) = (length(Syms) == length(data)) || throw(ArgumentError("Number of elements must match the number of names"))

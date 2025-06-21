@@ -17,5 +17,8 @@ using Test
     LArray{(:a,:b,:c)}(x)[(:a,:b)] = 2
     @test x == [2,2,3]
 
-    
+    @test_throws ArgumentError SymbolicIndexer{(:a,:a,:b)}()
+    @test_throws ArgumentError SLVector{(:a,:a,:b)}(1:3)
+    @test_throws ArgumentError LArray{(:a,:a,:b)}(1:3)
+    @test_throws TypeError SLVector{(1,:a,:b)}(1:3)
 end
