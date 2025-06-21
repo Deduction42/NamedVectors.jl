@@ -22,18 +22,18 @@ These names can be used to index into the original array linearly.
 struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
     data::D
     function LArray{Syms,D,T,N}(data::AbstractArray) where {Syms,D,T,N} 
-        _check_symbols(Syms)
+        _check_symbols(Syms, :LArray)
         _check_lengths(Syms, data)
         (D <: AbstractArray{T,N}) || "Data type parameter $(D) must be of type AbstractArray{$(T),$(N)}"
         return new{Syms,D,T,N}(data)
     end
     function LArray{Syms,D}(data::AbstractArray{T,N}) where {Syms,D,T,N} 
-        _check_symbols(Syms)
+        _check_symbols(Syms, :LArray)
         _check_lengths(Syms, data)
         return new{Syms,D,T,N}(data)
     end
     function LArray{Syms}(data::D) where {Syms,T,N,D<:AbstractArray{T,N}} 
-        _check_symbols(Syms)
+        _check_symbols(Syms, :LArray)
         _check_lengths(Syms, data)
         return new{Syms,D,T,N}(data)
     end
@@ -50,18 +50,18 @@ is actually a Tuple, it is essentially a NamedTuple with a uniform type and vect
 struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
     data::SVector{L,T}
     function SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L}
-        _check_symbols(Syms)
+        _check_symbols(Syms, :SLVector)
         (L == length(Syms) == length(data)) || "Lenth parameter must match the number of elements must match the number of names"
         return new{Syms,T,L}(data)
     end
     function SLVector{Syms,T}(data::AbstractArray) where {Syms,T}
-        _check_symbols(Syms)
+        _check_symbols(Syms, :SLVector)
         _check_lengths(Syms, data)
         L = length(Syms)
         return new{Syms,T,L}(data)
     end
     function SLVector{Syms}(data::AbstractArray{T}) where {Syms,T}
-        _check_symbols(Syms)
+        _check_symbols(Syms, :SLVector)
         _check_lengths(Syms, data)
         L = length(Syms)
         return new{Syms,T,L}(data)
@@ -101,11 +101,17 @@ end
 SLVector(data::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(data)))
 SLVector{Syms}(data::NamedTuple) where Syms = SLVector(data[Syms])
 SLVector(;kwargs...) = SLVector(values(kwargs))
-NamedTuple(data::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(convert(NTuple{length(syms)}, values(data)))
+Base.NamedTuple(data::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(convert(NTuple{length(syms)}, values(data)))
 
 #Interop with dictionaries
 (::Type{SLV})(data::Dict{Symbol}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), Syms))
 (::Type{SLV})(data::Dict{String}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), map(string, Syms)))
+(::Type{LA})(data::Dict{Symbol}) where {Syms, LA<:LArray{Syms}} = LA(collect(map(Base.Fix1(getindex, data), Syms)))
+(::Type{LA})(data::Dict{String}) where {Syms, LA<:LArray{Syms}} = LA(collect(map(Base.Fix1(getindex, data), map(string, Syms))))
+
+function Base.pairs(x::AbstractLabelledArray{Syms}) where Syms
+    (Syms[i] => xi for (i, xi) in enumerate(x))
+end
 
 #Self-selection
 SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = data[Syms]
@@ -119,6 +125,7 @@ Base.size(x::AbstractLabelledArray) = size(values(x))
 
 #Indexing of AbstractLabelledArray
 @propagate_inbounds Base.getindex(x::AbstractLabelledArray, inds...) = getindex(values(x), inds...)
+@propagate_inbounds Base.setindex!(x::AbstractLabelledArray, y, inds...) = setindex!(values(x), y, inds...)
 
 @propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::Symbol) where Syms
     num_ind = SymbolicIndexer(Syms)[ind]
@@ -126,10 +133,22 @@ Base.size(x::AbstractLabelledArray) = size(values(x))
     return data[offset(num_ind, data)]
 end
 
-@propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::NTuple{N,Symbol}) where {Syms,N}
+@propagate_inbounds function Base.setindex!(x::AbstractLabelledArray{Syms}, y, ind::Symbol) where Syms
+    num_ind = SymbolicIndexer(Syms)[ind]
+    data = values(x)
+    return setindex!(data, y, offset(num_ind, data))
+end
+
+@propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::Union{Symbol, NTuple{N,Symbol}}) where {Syms,N}
     vec_ind = SymbolicIndexer(Syms)[ind]
     data = values(x)
     return data[offset(vec_ind, data)]
+end
+
+@propagate_inbounds function Base.setindex!(x::AbstractLabelledArray{Syms}, y, ind::Union{Symbol, NTuple{N,Symbol}}) where {Syms,N}
+    num_ind = SymbolicIndexer(Syms)[ind]
+    data = values(x)
+    return setindex!(data, y, offset(num_ind, data))
 end
 
 function offset(ind, data::AbstractArray)
@@ -138,14 +157,10 @@ function offset(ind, data::AbstractArray)
 end
 
 #Symbol/data length check subroutines
-_check_symbols(Syms) = (Syms isa NTuple{L,Symbol} where L) || "Expected an NTuple{N,Symbol} for first parameter"
+function _check_symbols(Syms, func) 
+    (Syms isa NTuple{L,Symbol} where L) || throw(TypeError(func, "Syms", NTuple{N,Symbol} where N, Syms))
+    allunique(Syms) || error("Duplicate name in $(func){$(Syms)}")
+    return true
+end
+
 _check_lengths(Syms, data) = (length(Syms) == length(data)) || "Number of elements must match the number of names"
-
-
-nv = LArray{(:a,:b,:c)}(1:3)
-nv = LArray{(:a,:b,:c),Vector{Float64}}(1:3)
-nv = SLVector{(:a,:b,:c)}(1:3)
-nv = SLVector{(:a,:b,:c),Float64}(1:3)
-
-nv_ab = nv[(:a,:b)]
-
