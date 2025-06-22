@@ -1,10 +1,3 @@
-#============================================================================================================
-This package should be called "NamedVectors" 
-    The main feature (symbolic acces) works only with linear indexing
-    LArray{Syms,T} can wrap an array (avoids work) but is symbolically indexed like a Vector
-    NamedSVector{Syms,T} is a vector (drop support for NSArray) only needed for result of multiple indices
-============================================================================================================#
-
 import Base.@assert
 import Base.@propagate_inbounds
 using StaticArrays 
@@ -40,7 +33,7 @@ struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
 end
 
 const LVector{Syms,D,T} = LArray{Syms,D,T,1}
-LVector{Syms,D,T}(data::AbstractVector)  where {Syms,D,T} = LArray{Syms,D,T}(data)
+LVector{Syms,D,T}(data::AbstractVector) where {Syms,D,T} = LArray{Syms,D,T}(data)
 LVector{Syms,D}(data::AbstractVector) where {Syms,D} = LArray{Syms,D}(data)
 LVector{Syms}(data::AbstractVector) where {Syms} = LArray{Syms}(data)
 (::Type{LV})(data::AbstractArray) where LV<:AbstractVector = LV(reshape(data,:))
@@ -78,36 +71,6 @@ struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
     end
 end
 
-
-"""
-    SymbolicIndexer{Syms}
-
-A type that returns the numeric index of the list of symbols in Syms. It essentially functions as a 
-NamedTuple{Syms}(OneTo(length(Syms)))[sym], or findfirst(i->i==sym, Syms).
-
-For example, SymbolicIndexer((:a,:b,:c))[:b] will return "2"
-"""
-struct SymbolicIndexer{Syms} 
-    SymbolicIndexer{Syms}() where Syms = new{_check_labels(Syms, :SymbolicIndexer)}()
-end
-SymbolicIndexer(x::NTuple{N,Symbol}) where N = SymbolicIndexer{x}()
-
-@generated function findin(::Type{SymbolicIndexer{Syms}}, ::Val{ind}) where {Syms, ind}
-    idx  = findfirst(s -> s == ind, Syms)
-    if idx === nothing
-        error("Item $(ind) was not found in labels $(Syms)")
-    else
-        :($idx)
-    end
-end
-
-Base.getproperty(idxr::SymbolicIndexer{Syms}, ind::Symbol) where Syms = findin(SymbolicIndexer{Syms}, Val(ind))
-Base.getindex(idxr::SymbolicIndexer{Syms}, ind::Symbol) where Syms = findin(SymbolicIndexer{Syms}, Val(ind))
-function Base.getindex(idxr::SymbolicIndexer{Syms}, ind::NTuple{N,Symbol}) where {Syms,N}
-    return SVector{N}(map(i->idxr[i], ind))
-end
-
-
 #Interop with Tuple/NamedTuple
 (::Type{SLV})(data::Tuple) where {Syms, SLV<:SLVector{Syms}} = SLV(SVector(data))
 SLVector(data::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(data)))
@@ -121,59 +84,46 @@ Base.NamedTuple(data::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}
 (::Type{LA})(data::Dict{Symbol}) where {Syms, LA<:LArray{Syms}} = LA(collect(map(Base.Fix1(getindex, data), Syms)))
 (::Type{LA})(data::Dict{String}) where {Syms, LA<:LArray{Syms}} = LA(collect(map(Base.Fix1(getindex, data), map(string, Syms))))
 
-function Base.pairs(x::AbstractLabelledArray{Syms}) where Syms
-    (Syms[i] => xi for (i, xi) in enumerate(x))
-end
-
 #Self-selection
 SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = data[Syms]
 SLVector{Syms,T}(data::AbstractLabelledArray{Syms0}) where {Syms,Syms0,T} = SLVector{Syms,T}(values(data)[SymbolicIndexer{Syms0}[Syms]])
 
-#Main AbstractArray API
-Base.values(x::AbstractLabelledArray) = x.data
+"""
+    SymbolicIndexer{Syms}
+
+A type that returns the numeric index of the list of symbols in Syms. It essentially functions as a 
+NamedTuple{Syms}(OneTo(length(Syms)))[sym], or findfirst(i->i==sym, Syms).
+
+For example, SymbolicIndexer((:a,:b,:c))[:b] will return "2"
+"""
+struct SymbolicIndexer{Syms} 
+    SymbolicIndexer{Syms}() where Syms = new{_check_labels(Syms, :SymbolicIndexer)}()
+end
+SymbolicIndexer(x::NTuple{N,Symbol}) where N = SymbolicIndexer{x}()
+Base.getproperty(x::SymbolicIndexer, name::Symbol) = getindex(x, name)
+
+
+#===================================================================================================
+NamedTuple API duplication
+===================================================================================================#
+Base.values(x::AbstractLabelledArray) = getfield(x, :data)
 Base.propertynames(x::AbstractLabelledArray{Syms}) where Syms = Syms
 Base.keys(x::AbstractLabelledArray{Syms}) where Syms = Syms
+function Base.pairs(x::AbstractLabelledArray{Syms}) where Syms
+    (Syms[i] => xi for (i, xi) in enumerate(x))
+end
 Base.size(x::AbstractLabelledArray) = size(values(x))
-Base.:(==)(x1::AbstractLabelledArray{Syms1}, x2::AbstractLabelledArray{Syms2}) = (Syms1==Syms2) && (values(x1)==values(x2))
 
-#Indexing of AbstractLabelledArray
-@propagate_inbounds Base.getindex(x::AbstractLabelledArray, inds...) = getindex(values(x), inds...)
-@propagate_inbounds Base.setindex!(x::AbstractLabelledArray, y, inds...) = setindex!(values(x), y, inds...)
-
-@propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::Symbol) where Syms
-    num_ind = SymbolicIndexer(Syms)[ind]
-    data = values(x)
-    return data[offset(num_ind, data)]
+function Base.:(==)(x1::AbstractLabelledArray{Syms1}, x2::AbstractLabelledArray{Syms2}) where {Syms1,Syms2} 
+    return (Syms1==Syms2) && (values(x1)==values(x2))
 end
 
-@propagate_inbounds function Base.setindex!(x::AbstractLabelledArray{Syms}, y, ind::Symbol) where Syms
-    num_ind = SymbolicIndexer(Syms)[ind]
-    data = values(x)
-    return setindex!(data, y, offset(num_ind, data))
-end
-
-@propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::Union{Symbol, NTuple{N,Symbol}}) where {Syms,N}
-    vec_ind = SymbolicIndexer(Syms)[ind]
-    data = values(x)
-    return data[offset(vec_ind, data)]
-end
-
-@propagate_inbounds function Base.setindex!(x::AbstractLabelledArray{Syms}, y, ind::Union{Symbol, NTuple{N,Symbol}}) where {Syms,N}
-    num_ind = SymbolicIndexer(Syms)[ind]
-    data = values(x)
-    return setindex!(data, y, offset(num_ind, data))
-end
-
-function offset(ind, data::AbstractArray)
-    ind0 = firstindex(data)
-    return isone(ind0) ? ind : ind + (ind0-1) 
-end
-
-#Symbol/data length check subroutines
+#===================================================================================================
+Checking utility functions
+===================================================================================================#
 function _check_labels(Syms, func) 
     (Syms isa NTuple{L,Symbol} where L) || throw(TypeError(func, "Syms", NTuple{N,Symbol} where N, Syms))
     allunique(Syms) || throw(ArgumentError("Duplicate name in $(func){$(Syms)}"))
     return Syms
 end
-
 _check_lengths(Syms, data) = (length(Syms) == length(data)) || throw(ArgumentError("Number of elements must match the number of names"))

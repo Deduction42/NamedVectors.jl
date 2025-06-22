@@ -1,0 +1,11 @@
+Major Changes:
+-   Parameterization order LArray{Syms, D, T, N} is changed to mimic the NamedTuple wrapper-style
+    -   Parameter order is based on "inferability", the more inferrable, the later the parameter comes in the sequence
+    -   NamedTuple{Syms}(x::Tuple) wraps a tuple with names 
+    -   LArray{Syms}(x::AbstractAray) wraps an array with names
+
+-   Introduce the SymbolicIndexer type which users can make use of themselves
+    -   Operates like a NamedTuple{Syms}(Base.OneTo(length(Syms)))
+
+Breaking Changes:
+-   SArray no longer supported (Use SVector or LArray instead)
