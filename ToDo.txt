@@ -1,3 +1,11 @@
+ToDo:
+-   Redefine SLArray{Syms, T, N} as an LArray{Syms, SVector{N,T}}
+    -   We will still need the other constructors
+    -   Test to see if LVector{Syms}(NamedTuple) produces a Vector while SVector{Syms} produces an SVector
+-   Implement the "array" API including broadcasting
+-   Copy the existing tests
+
+
 Major Changes:
 -   Parameterization order LArray{Syms, D, T, N} is changed to mimic the NamedTuple wrapper-style
     -   Parameter order is based on "inferability", the more inferrable, the later the parameter comes in the sequence
