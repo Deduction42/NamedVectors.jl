@@ -11,7 +11,7 @@ using StaticArrays
 
     syms = (:a,:b,:c,:d)
     @test LVector{syms}(ones(2,2)) == LArray{syms}(ones(4))
-    @test LVector{syms, SVector{4,Float32}}(ones(2,2)) === LVector{syms}(SVector{4,Float32}(ones(4)))
+    @test LArray{syms, SVector{4,Float32}}(ones(2,2)) === LVector{syms}(SVector{4,Float32}(ones(4)))
 
     x = [1,2,3]
     LArray{(:a,:b,:c)}(x)[:b] = 3

@@ -33,14 +33,10 @@ struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
 end
 
 const LVector{Syms,D,T} = LArray{Syms,D,T,1}
-LVector{Syms,D,T}(data::AbstractVector) where {Syms,D,T} = LArray{Syms,D,T}(data)
-LVector{Syms,D}(data::AbstractVector) where {Syms,D} = LArray{Syms,D}(data)
 LVector{Syms}(data::AbstractVector) where {Syms} = LArray{Syms}(data)
-(::Type{LV})(data::AbstractArray) where LV<:AbstractVector = LV(reshape(data,:))
+LVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(reshape(data,:))
 
 const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
-LMatrix{Syms,D,T}(data::AbstractMatrix)  where {Syms,D,T} = LArray{Syms,D,T}(data)
-LMatrix{Syms,D}(data::AbstractMatrix) where {Syms,D} = LArray{Syms,D}(data)
 LMatrix{Syms}(data::AbstractMatrix) where {Syms} = LArray{Syms}(data)
 
 
@@ -50,6 +46,13 @@ LMatrix{Syms}(data::AbstractMatrix) where {Syms} = LArray{Syms}(data)
 A special type of "LArray" that is designed to mimic the NamedTuple API. Since the underlying data
 is actually a Tuple, it is essentially a NamedTuple with a uniform type and vector-like behaviour
 """
+const SLVector{Syms,T,L} = LArray{Syms,SVector{L,T},T,1}
+SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L} = LArray{Syms}(SVector{L,T}(data))
+SLVector{Syms,T}(data::AbstractArray) where {Syms,T} = LArray{Syms}(SVector{length(Syms),T}(data))
+SLVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(SVector{length(Syms)}(data))
+
+
+#=
 struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
     data::SVector{L,T}
     function SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L}
@@ -70,7 +73,7 @@ struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
         return new{Syms,T,L}(data)
     end
 end
-
+=#
 #Interop with Tuple/NamedTuple
 (::Type{SLV})(data::Tuple) where {Syms, SLV<:SLVector{Syms}} = SLV(SVector(data))
 SLVector(data::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(data)))
