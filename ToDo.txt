@@ -1,4 +1,5 @@
 ToDo:
+-   Broaden NamedTuple support for LArray/LVector/SLVector of NamedTuple
 -   Indexing a generic array with a LArray that yields names
 -   Implement the "array" API including broadcasting
 -   Copy the existing tests
@@ -14,4 +15,5 @@ Major Changes:
     -   Operates like a NamedTuple{Syms}(Base.OneTo(length(Syms)))
 
 Breaking Changes:
--   SArray no longer supported (Use SVector or LArray instead)
+-   SLArray is no longer supported (use LArray{Syms, D<:SArray})
+-   SLVector is a special case of LArray

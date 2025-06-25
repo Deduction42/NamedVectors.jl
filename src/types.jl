@@ -33,10 +33,13 @@ struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
 end
 
 const LVector{Syms,D,T} = LArray{Syms,D,T,1}
+LVector{Syms,D}(data::AbstractVector) where {Syms,D<:AbstractVector} = LArray{Syms,D}(data)
+LVector{Syms,D}(data::AbstractArray) where {Syms,D<:AbstractVector} = LArray{Syms,D}(reshape(data,:))
 LVector{Syms}(data::AbstractVector) where {Syms} = LArray{Syms}(data)
 LVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(reshape(data,:))
 
 const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
+LMatrix{Syms,D}(data::AbstractMatrix) where {Syms,D<:AbstractMatrix} = LArray{Syms,D}(data)
 LMatrix{Syms}(data::AbstractMatrix) where {Syms} = LArray{Syms}(data)
 
 
