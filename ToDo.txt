@@ -1,4 +1,7 @@
 ToDo:
+-   There are too many constructors
+    -   Just focus on the "full constructor" and the "Syms" constructor for LArray and LVector
+    -   We may need all three SLArray constructors
 -   Update the "self selection" activity
 -   Broaden NamedTuple support for LArray/LVector/SLVector of NamedTuple
 -   Indexing a generic array with a LArray that yields names

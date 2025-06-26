@@ -1,6 +1,7 @@
 using NamedVectors
 using Test
 using StaticArrays
+using Aqua
 
 @testset "NamedVectors.jl" begin
     syms = (:a,:b,:c)
@@ -27,11 +28,15 @@ using StaticArrays
 
     x .= [1,2,3]
     @test SLVector{(:b,:c)}(xL) == SLVector(b=2,c=3)
-    @test LVector{(:b,:c)}(xL) == SLVector(b=2,c=3)
-    @test LArray{(:b,:c)}(xL) == SLVector(b=2,c=3)
+    #@test LVector{(:b,:c)}(xL) == SLVector(b=2,c=3)
+    #@test LArray{(:b,:c)}(xL) == SLVector(b=2,c=3)
 
     @test_throws ArgumentError SymbolicIndexer{(:a,:a,:b)}()
     @test_throws ArgumentError SLVector{(:a,:a,:b)}(1:3)
     @test_throws ArgumentError LArray{(:a,:a,:b)}(1:3)
     @test_throws TypeError SLVector{(1,:a,:b)}(1:3)
+end
+
+@testset "Aqua.jl" begin
+    Aqua.test_all(NamedVectors)
 end

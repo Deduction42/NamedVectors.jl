@@ -51,7 +51,7 @@ end
     return data[lin_offset(vec_ind, data)]
 end
 
-@propagate_inbounds function Base.setindex!(x::AbstractLabelledArray{Syms}, y, ind::Union{Symbol, NTuple{N,Symbol}}) where {Syms,N}
+@propagate_inbounds function Base.setindex!(x::AbstractLabelledArray{Syms}, y, ind::NTuple{N,Symbol}) where {Syms,N}
     num_ind = SymbolicIndexer(Syms)[ind]
     data = values(x)
     return setindex!(data, y, lin_offset(num_ind, data))
