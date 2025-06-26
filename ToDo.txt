@@ -1,6 +1,6 @@
 ToDo:
--   Indexing a generic array with a LArray that yields names
 -   Implement the "array" API including broadcasting
+-   Add "merge" functionality (and existing constructors)
 -   Copy the existing tests
 
 
