@@ -1,7 +1,11 @@
+using Revise
 using NamedVectors
 using Test
 using StaticArrays
 using Aqua
+
+
+import NamedVectors.symcollect
 
 @testset "NamedVectors.jl" begin
     syms = (:a,:b,:c)
@@ -10,11 +14,11 @@ using Aqua
     @test SLVector{syms}(1:3) == SLVector((a=1,b=2,c=3))
     @test SLVector{syms,Float64}(1:3) == SLVector((a=1.0, b=2,c=3))
     @test SLVector{syms}(1:3)[(:a,:b)] == SLVector((a=1,b=2))
-    @test values(SLVector{syms}(1:3), (:a,:b)) == SVector(1,2)
+    @test symcollect(SLVector{syms}(1:3), (:a,:b)) == SVector(1,2)
 
     syms = (:a,:b,:c,:d)
-    @test LVector{syms}(ones(2,2)) == LArray{syms}(ones(4))
-    @test LArray{syms, SVector{4,Float32}}(ones(2,2)) === LVector{syms}(SVector{4,Float32}(ones(4)))
+    @test LArray{syms, SVector{4,Float32}}(ones(2,2)) === LArray{syms}(SVector{4,Float32}(ones(4)))
+    @test SLVector{syms, Float32}(ones(2,2)) === LArray{syms}(SVector{4,Float32}(ones(4)))
 
     x = [1,2,3]
     xL = LArray{(:a,:b,:c)}(x)

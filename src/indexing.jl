@@ -42,13 +42,7 @@ end
 
 #Multi value indexing always returns SLVector{Syms}
 @propagate_inbounds function Base.getindex(x::AbstractLabelledArray{Syms}, ind::NTuple{N,Symbol}) where {Syms,N}
-    return SLVector{ind}(values(x, ind))
-end
-
-@propagate_inbounds function Base.values(x::AbstractLabelledArray{Syms}, ind::NTuple{N,Symbol}) where {Syms,N}
-    vec_ind = SymbolicIndexer(Syms)[ind]
-    data = values(x)
-    return data[lin_offset(vec_ind, data)]
+    return LArray{ind}(symcollect(x, ind))
 end
 
 @propagate_inbounds function Base.setindex!(x::AbstractLabelledArray{Syms}, y, ind::NTuple{N,Symbol}) where {Syms,N}
@@ -56,6 +50,16 @@ end
     data = values(x)
     return setindex!(data, y, lin_offset(num_ind, data))
 end
+
+@propagate_inbounds function symcollect(x::AbstractLabelledArray{Syms}, ind::NTuple{N,Symbol}) where {Syms,N}
+    vec_ind = SymbolicIndexer(Syms)[ind]
+    data = values(x)
+    return data[lin_offset(vec_ind, data)]
+end
+symcollect(d::AbstractDict{Symbol}, ind::NTuple{N,Symbol}) where N = map(k->d[k], SVector{N}(ind))
+symcollect(d::AbstractDict{String}, ind::NTuple{N,Symbol}) where N = map(k->d[string(k)], SVector{N}(ind))
+symcollect(nt::NamedTuple, ind::NTuple{N,Symbol}) where N = SVector{N}(values(nt[ind]))
+
 
 #No need for branching for integer or range index
 lin_offset(ind::Union{Integer, AbstractRange}, data::AbstractArray) = ind + lin_offset(data)

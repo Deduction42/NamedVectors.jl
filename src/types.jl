@@ -33,14 +33,7 @@ struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
 end
 
 const LVector{Syms,D,T} = LArray{Syms,D,T,1}
-LVector{Syms,D}(data::AbstractVector) where {Syms,D<:AbstractVector} = LArray{Syms,D}(data)
-LVector{Syms,D}(data::AbstractArray) where {Syms,D<:AbstractVector} = LArray{Syms,D}(reshape(data,:))
-LVector{Syms}(data::AbstractVector) where {Syms} = LArray{Syms}(data)
-LVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(reshape(data,:))
-
 const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
-LMatrix{Syms,D}(data::AbstractMatrix) where {Syms,D<:AbstractMatrix} = LArray{Syms,D}(data)
-LMatrix{Syms}(data::AbstractMatrix) where {Syms} = LArray{Syms}(data)
 
 
 """
@@ -54,31 +47,33 @@ SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L} = LArray{Syms}(SVector{
 SLVector{Syms,T}(data::AbstractArray) where {Syms,T} = LArray{Syms}(SVector{length(Syms),T}(data))
 SLVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(SVector{length(Syms)}(data))
 
-#If the argument is not an array, use the SLVector constructor which is the most specific and efficient
-LArray(x::Any) = SLVector(x)
-LVector(x::Any) = SLVector(x)
-LArray(;kwargs...) = SLVector(;kwargs...)
-LVector(;kwargs...) = SLVector(;kwargs...)
+#===================================================================================================
+Various constructors
+===================================================================================================#
+
+#Generic constructors
+LArray{Syms,D}(x::Any) where {Syms,D} = LArray{Syms}(convert(D, symcollect(x, Syms)))
+SLVector{Syms}(x::Any) where {Syms} = SLVector{Syms}(symcollect(x, Syms))
 LArray{Syms}(x::Any) where {Syms} = SLVector{Syms}(x)
-LVector{Syms}(x::Any) where {Syms} = SLVector{Syms}(x)
-LArray{Syms,D}(x::Any) where {Syms,D<:AbstractArray} = LArray{Syms}(convert(D,values(SLVector{Syms}(x))))
-LVector{Syms,D}(x::Any) where {Syms,D<:AbstractVector} = LArray{Syms}(convert(D,values(SLVector{Syms}(x))))
+LArray(x::Any) = SLVector(x)
+LArray(;kwargs...) = SLVector(;kwargs...)
 
 #Interop with Tuple/NamedTuple
-(::Type{SLV})(data::Tuple) where {Syms, SLV<:SLVector{Syms}} = SLV(SVector(data))
-SLVector(data::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(data)))
-SLVector{Syms}(data::NamedTuple) where Syms = SLVector(data[Syms])
+SLVector{Syms}(x::Tuple) where {Syms} = SLVector{Syms}(SVector(x))
+SLVector(x::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(x)))
 SLVector(;kwargs...) = SLVector(values(kwargs))
-Base.NamedTuple(data::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(convert(NTuple{length(syms)}, values(data)))
-
-#Interop with dictionaries
-(::Type{SLV})(data::Dict{Symbol}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), Syms))
-(::Type{SLV})(data::Dict{String}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), map(string, Syms)))
+Base.NamedTuple(x::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(convert(NTuple{length(syms)}, values(x)))
 
 #Cross-conversion
-SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = data[Syms]
-SLVector{Syms,T}(data::AbstractLabelledArray) where {Syms,T} = SLVector{Syms,T}(values(data, Syms))
-SLVector{Syms,T,L}(data::AbstractLabelledArray) where {Syms,T,L} = SLVector{Syms,T,L}(values(data, Syms))
+LArray{Syms,D,T,N}(data::AbstractLabelledArray) where {Syms,D,T,N} = LArray{Syms,D,T,N}(symcollect(data, Syms))
+LArray{Syms,D}(data::AbstractLabelledArray) where {Syms,T,N,D<:AbstractArray{T,N}} = LArray{Syms,D,T,N}(symcollect(data, Syms))
+LArray{Syms}(data::AbstractLabelledArray) where {Syms} = LArray{Syms}(symcollect(data, Syms))
+
+SLVector{Syms,T,L}(data::AbstractLabelledArray) where {Syms,T,L} = SLVector{Syms,T,L}(symcollect(data, Syms))
+SLVector{Syms,T}(data::AbstractLabelledArray) where {Syms,T} = SLVector{Syms,T}(symcollect(data, Syms))
+SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = SLVector{Syms}(symcollect(data, Syms))
+
+
 
 """
     SymbolicIndexer{Syms}
@@ -111,7 +106,7 @@ function Base.:(==)(x1::AbstractLabelledArray{Syms1}, x2::AbstractLabelledArray{
 end
 
 #===================================================================================================
-Checking utility functions
+Argument checking
 ===================================================================================================#
 function _check_labels(Syms, func) 
     (Syms isa NTuple{L,Symbol} where L) || throw(TypeError(func, "Syms", NTuple{N,Symbol} where N, Syms))
