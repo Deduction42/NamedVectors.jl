@@ -30,15 +30,16 @@ using Aqua
 
     #Conversions between different LArrays
     xL = LArray{(:a,:b,:c)}([1.0,2.0,3.0])
-    @test SLVector{(:b,:c)}(xL) === SLVector(b=2.0,c=3.0)
-    @test LArray{(:b,:c)}(xL) === SLVector(b=2.0,c=3.0)
-    @test LArray{(:b,:c),Vector}(xL) == LArray{(:b,:c)}([2.0,3.0])
+    @test SLVector{(:b,:c)}(xL) === SLVector(b=2.0, c=3.0)
+    @test LArray{(:b,:c)}(xL) === SLVector(b=2.0, c=3.0)
+    @test LArray{(:b,:c),Vector}(xL) == LArray{(:b,:c)}([2.0, 3.0])
     @test LArray{(:b,:c),Vector{Int32}}(xL) isa LArray{(:b,:c), Vector{Int32}}
 
     #Indexing with an LArray
     x = 1.0:4.0
-    x[LArray(a=1,b=2)] == LArray(a=1.0,b=2.0)
+    x[LArray(a=1,b=2)] == LArray(a=1.0, b=2.0)
 
+    #Testing bad symbolic names
     @test_throws ArgumentError SymbolicIndexer{(:a,:a,:b)}()
     @test_throws ArgumentError SLVector{(:a,:a,:b)}(1:3)
     @test_throws ArgumentError LArray{(:a,:a,:b)}(1:3)
