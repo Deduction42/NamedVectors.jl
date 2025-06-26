@@ -52,8 +52,8 @@ Various constructors
 ===================================================================================================#
 
 #Generic constructors
-LArray{Syms,D}(x::Any) where {Syms,D} = LArray{Syms}(convert(D, symcollect(x, Syms)))
-SLVector{Syms}(x::Any) where {Syms} = SLVector{Syms}(symcollect(x, Syms))
+LArray{Syms,D}(x::Any) where {Syms,D} = LArray{Syms}(convert(D, getsvec(x, Syms)))
+SLVector{Syms}(x::Any) where {Syms} = SLVector{Syms}(getsvec(x, Syms))
 LArray{Syms}(x::Any) where {Syms} = SLVector{Syms}(x)
 LArray(x::Any) = SLVector(x)
 LArray(;kwargs...) = SLVector(;kwargs...)
@@ -65,13 +65,13 @@ SLVector(;kwargs...) = SLVector(values(kwargs))
 Base.NamedTuple(x::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(convert(NTuple{length(syms)}, values(x)))
 
 #Cross-conversion
-LArray{Syms,D,T,N}(data::AbstractLabelledArray) where {Syms,D,T,N} = LArray{Syms,D,T,N}(symcollect(data, Syms))
-LArray{Syms,D}(data::AbstractLabelledArray) where {Syms,T,N,D<:AbstractArray{T,N}} = LArray{Syms,D,T,N}(symcollect(data, Syms))
-LArray{Syms}(data::AbstractLabelledArray) where {Syms} = LArray{Syms}(symcollect(data, Syms))
+LArray{Syms,D,T,N}(data::AbstractLabelledArray) where {Syms,D,T,N} = LArray{Syms,D,T,N}(getsvec(data, Syms))
+LArray{Syms,D}(data::AbstractLabelledArray) where {Syms,T,N,D<:AbstractArray{T,N}} = LArray{Syms,D,T,N}(getsvec(data, Syms))
+LArray{Syms}(data::AbstractLabelledArray) where {Syms} = LArray{Syms}(getsvec(data, Syms))
 
-SLVector{Syms,T,L}(data::AbstractLabelledArray) where {Syms,T,L} = SLVector{Syms,T,L}(symcollect(data, Syms))
-SLVector{Syms,T}(data::AbstractLabelledArray) where {Syms,T} = SLVector{Syms,T}(symcollect(data, Syms))
-SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = SLVector{Syms}(symcollect(data, Syms))
+SLVector{Syms,T,L}(data::AbstractLabelledArray) where {Syms,T,L} = SLVector{Syms,T,L}(getsvec(data, Syms))
+SLVector{Syms,T}(data::AbstractLabelledArray) where {Syms,T} = SLVector{Syms,T}(getsvec(data, Syms))
+SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = SLVector{Syms}(getsvec(data, Syms))
 
 
 
@@ -114,27 +114,3 @@ function _check_labels(Syms, func)
     return Syms
 end
 _check_lengths(Syms, data) = (length(Syms) == length(data)) || throw(ArgumentError("Number of elements must match the number of names"))
-
-
-#=
-struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
-    data::SVector{L,T}
-    function SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L}
-        _check_labels(Syms, :SLVector)
-        (L == length(Syms) == length(data)) || "Lenth parameter must match the number of elements must match the number of names"
-        return new{Syms,T,L}(data)
-    end
-    function SLVector{Syms,T}(data::AbstractArray) where {Syms,T}
-        _check_labels(Syms, :SLVector)
-        _check_lengths(Syms, data)
-        L = length(Syms)
-        return new{Syms,T,L}(data)
-    end
-    function SLVector{Syms}(data::AbstractArray{T}) where {Syms,T}
-        _check_labels(Syms, :SLVector)
-        _check_lengths(Syms, data)
-        L = length(Syms)
-        return new{Syms,T,L}(data)
-    end
-end
-=#
