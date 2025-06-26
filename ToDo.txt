@@ -1,4 +1,5 @@
 ToDo:
+-   Update the "self selection" activity
 -   Broaden NamedTuple support for LArray/LVector/SLVector of NamedTuple
 -   Indexing a generic array with a LArray that yields names
 -   Implement the "array" API including broadcasting

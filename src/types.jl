@@ -54,29 +54,16 @@ SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L} = LArray{Syms}(SVector{
 SLVector{Syms,T}(data::AbstractArray) where {Syms,T} = LArray{Syms}(SVector{length(Syms),T}(data))
 SLVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(SVector{length(Syms)}(data))
 
+#If the argument is not an array, use the SLVector constructor which is the most specific and efficient
+LArray(x::Any) = SLVector(x)
+LVector(x::Any) = SLVector(x)
+LArray(;kwargs...) = SLVector(;kwargs...)
+LVector(;kwargs...) = SLVector(;kwargs...)
+LArray{Syms}(x::Any) where {Syms} = SLVector{Syms}(x)
+LVector{Syms}(x::Any) where {Syms} = SLVector{Syms}(x)
+LArray{Syms,D}(x::Any) where {Syms,D<:AbstractArray} = LArray{Syms}(convert(D,values(SLVector{Syms}(x))))
+LVector{Syms,D}(x::Any) where {Syms,D<:AbstractVector} = LArray{Syms}(convert(D,values(SLVector{Syms}(x))))
 
-#=
-struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
-    data::SVector{L,T}
-    function SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L}
-        _check_labels(Syms, :SLVector)
-        (L == length(Syms) == length(data)) || "Lenth parameter must match the number of elements must match the number of names"
-        return new{Syms,T,L}(data)
-    end
-    function SLVector{Syms,T}(data::AbstractArray) where {Syms,T}
-        _check_labels(Syms, :SLVector)
-        _check_lengths(Syms, data)
-        L = length(Syms)
-        return new{Syms,T,L}(data)
-    end
-    function SLVector{Syms}(data::AbstractArray{T}) where {Syms,T}
-        _check_labels(Syms, :SLVector)
-        _check_lengths(Syms, data)
-        L = length(Syms)
-        return new{Syms,T,L}(data)
-    end
-end
-=#
 #Interop with Tuple/NamedTuple
 (::Type{SLV})(data::Tuple) where {Syms, SLV<:SLVector{Syms}} = SLV(SVector(data))
 SLVector(data::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(data)))
@@ -87,12 +74,11 @@ Base.NamedTuple(data::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}
 #Interop with dictionaries
 (::Type{SLV})(data::Dict{Symbol}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), Syms))
 (::Type{SLV})(data::Dict{String}) where {Syms, SLV<:SLVector{Syms}} = SLV(map(Base.Fix1(getindex, data), map(string, Syms)))
-(::Type{LA})(data::Dict{Symbol}) where {Syms, LA<:LArray{Syms}} = LA(collect(map(Base.Fix1(getindex, data), Syms)))
-(::Type{LA})(data::Dict{String}) where {Syms, LA<:LArray{Syms}} = LA(collect(map(Base.Fix1(getindex, data), map(string, Syms))))
 
-#Self-selection
+#Cross-conversion
 SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = data[Syms]
-SLVector{Syms,T}(data::AbstractLabelledArray{Syms0}) where {Syms,Syms0,T} = SLVector{Syms,T}(values(data)[SymbolicIndexer{Syms0}[Syms]])
+SLVector{Syms,T}(data::AbstractLabelledArray) where {Syms,T} = SLVector{Syms,T}(values(data, Syms))
+SLVector{Syms,T,L}(data::AbstractLabelledArray) where {Syms,T,L} = SLVector{Syms,T,L}(values(data, Syms))
 
 """
     SymbolicIndexer{Syms}
@@ -133,3 +119,27 @@ function _check_labels(Syms, func)
     return Syms
 end
 _check_lengths(Syms, data) = (length(Syms) == length(data)) || throw(ArgumentError("Number of elements must match the number of names"))
+
+
+#=
+struct SLVector{Syms,T,L} <: AbstractLabelledVector{Syms,T}
+    data::SVector{L,T}
+    function SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L}
+        _check_labels(Syms, :SLVector)
+        (L == length(Syms) == length(data)) || "Lenth parameter must match the number of elements must match the number of names"
+        return new{Syms,T,L}(data)
+    end
+    function SLVector{Syms,T}(data::AbstractArray) where {Syms,T}
+        _check_labels(Syms, :SLVector)
+        _check_lengths(Syms, data)
+        L = length(Syms)
+        return new{Syms,T,L}(data)
+    end
+    function SLVector{Syms}(data::AbstractArray{T}) where {Syms,T}
+        _check_labels(Syms, :SLVector)
+        _check_lengths(Syms, data)
+        L = length(Syms)
+        return new{Syms,T,L}(data)
+    end
+end
+=#
