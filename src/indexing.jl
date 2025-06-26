@@ -51,7 +51,7 @@ end
 end
 
 #Indexing with LabelledArrays (returns a labelled indexing result)
-@propagate_inbounds function Base.getindex(x::AbstractArray, ind::LArray{Syms})
+@propagate_inbounds function Base.getindex(x::AbstractArray, ind::LArray{Syms}) where Syms
     return LArray{Syms}(x[values(ind)])
 end
 
