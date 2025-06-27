@@ -1,11 +1,13 @@
 ToDo:
--   There are too many constructors
-    -   Just focus on the "full constructor" and the "Syms" constructor for LArray and LVector
-    -   We may need all three SLArray constructors
--   Update the "self selection" activity
--   Broaden NamedTuple support for LArray/LVector/SLVector of NamedTuple
--   Indexing a generic array with a LArray that yields names
--   Implement the "array" API including broadcasting
+-   Add "merge" functionality (and existing constructors)
+-   Add conversion tools including
+    - (::Type{<:AA})(x::AbstractLabelledArray) where AA<:AbstractArray = AA(values(x))
+
+-   Create extensions for (see how it's done for extensions in StaticArrays)
+    - ArrayInterface
+    - ChainRulesCore
+    - PreallocationTools
+    - RecursiveArrayTools
 -   Copy the existing tests
 
 
@@ -20,4 +22,5 @@ Major Changes:
 
 Breaking Changes:
 -   SLArray is no longer supported (use LArray{Syms, D<:SArray})
--   SLVector is a special case of LArray
+-   SLVector is now a special case of LArray
+-   getindex(x::AbstractArray, ind::LArray{Syms}) now produces a labelled result. To get an unlabelled result, simply use getindex(x, values(ind))
