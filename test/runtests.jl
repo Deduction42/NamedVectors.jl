@@ -1,4 +1,4 @@
-using Revise
+#using Revise
 using NamedVectors
 using Test
 using StaticArrays
