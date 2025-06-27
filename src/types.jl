@@ -60,9 +60,10 @@ LArray(;kwargs...) = SLVector(;kwargs...)
 
 #Interop with Tuple/NamedTuple
 SLVector{Syms}(x::Tuple) where {Syms} = SLVector{Syms}(SVector(x))
+Base.Tuple(x::AbstractLabelledArray{Syms,<:SArray}) where {Syms} = Tuple(values(x))
 SLVector(x::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(x)))
 SLVector(;kwargs...) = SLVector(values(kwargs))
-Base.NamedTuple(x::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(convert(NTuple{length(syms)}, values(x)))
+Base.NamedTuple(x::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(NTuple{length(syms),eltype(x)}(values(x)))
 
 #Cross-conversion
 LArray{Syms,D,T,N}(data::AbstractLabelledArray) where {Syms,D,T,N} = LArray{Syms,D,T,N}(getsvec(data, Syms))
@@ -73,6 +74,10 @@ SLVector{Syms,T,L}(data::AbstractLabelledArray) where {Syms,T,L} = SLVector{Syms
 SLVector{Syms,T}(data::AbstractLabelledArray) where {Syms,T} = SLVector{Syms,T}(getsvec(data, Syms))
 SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = SLVector{Syms}(getsvec(data, Syms))
 
+#Converting from LArray to other array types
+Base.convert(::Type{AT}, x::AT) where {AT<:LArray} = x
+Base.convert(::Type{AT}, x::LArray) where {AT<:Array} = convert(AT, values(x))
+Base.convert(::Type{AT}, x::LArray) where {AT<:StaticArray} = convert(AT, values(x))
 
 
 """
@@ -91,11 +96,12 @@ Base.getproperty(x::SymbolicIndexer, name::Symbol) = getindex(x, name)
 
 
 #===================================================================================================
-NamedTuple API duplication
+NamedTuple API compliance
 ===================================================================================================#
 Base.values(x::AbstractLabelledArray) = getfield(x, :data)
 Base.propertynames(x::AbstractLabelledArray{Syms}) where Syms = Syms
 Base.keys(x::AbstractLabelledArray{Syms}) where Syms = Syms
+@inline symnames(::Type{<:LArray{Syms}}) where {Syms} = Syms
 function Base.pairs(x::AbstractLabelledArray{Syms}) where Syms
     (Syms[i] => xi for (i, xi) in enumerate(x))
 end
@@ -105,12 +111,64 @@ function Base.:(==)(x1::AbstractLabelledArray{Syms1}, x2::AbstractLabelledArray{
     return (Syms1==Syms2) && (values(x1)==values(x2))
 end
 
+
+#===================================================================================================
+Display utilities
+===================================================================================================#
+struct PrintWrapper{T, N, F, X <: AbstractArray{T, N}} <: AbstractArray{T, N}
+    f::F
+    x::X
+end
+
+for f in (:eltype, :length, :ndims, :size, :axes, :eachindex, :stride, :strides)
+    @eval Base.$f(wrapper::PrintWrapper) = $f(wrapper.x)
+end
+Base.getindex(A::PrintWrapper, idxs...) = A.f(A.x, A.x[idxs...], idxs)
+Base.getindex(A::PrintWrapper, idxs::LArray{Syms}) where Syms =  A.f(A.x, A.x[values(idxs)], values(idxs))
+
+function lazypair(A, x, idxs)
+    syms = symnames(typeof(A))
+    II = LinearIndices(A)
+    key = eltype(syms) <: Symbol ? syms[II[idxs...]] : findfirst(syms) do sym
+        ii = idxs isa Tuple ? II[idxs...] : II[idxs]
+        sym isa Tuple ? ii in II[sym...] : ii in II[sym]
+    end
+    key => x
+end
+
+Base.show(io::IO, ::MIME"text/plain", x::LArray) = show(io, x)
+function Base.show(io::IO, x::LArray)
+    syms = symnames(typeof(x))
+    n = length(syms)
+    pwrapper = PrintWrapper(lazypair, x)
+    if io isa IOContext && get(io, :limit, false) &&
+       displaysize(io) isa Tuple{Integer, Integer}
+        io = IOContext(io, :limit => true, :displaysize => cld.(2 .* displaysize(io), 3))
+    end
+    println(io, summary(x), ':')
+    Base.print_array(io, pwrapper)
+end
+
+
 #===================================================================================================
 Argument checking
 ===================================================================================================#
 function _check_labels(Syms, func) 
     (Syms isa NTuple{L,Symbol} where L) || throw(TypeError(func, "Syms", NTuple{N,Symbol} where N, Syms))
-    allunique(Syms) || throw(ArgumentError("Duplicate name in $(func){$(Syms)}"))
+    allunique(Syms) || throw(ArgumentError("Duplicate field names found in '$(func)': $(collect(_find_duplicates(Syms)))"))
     return Syms
 end
 _check_lengths(Syms, data) = (length(Syms) == length(data)) || throw(ArgumentError("Number of elements must match the number of names"))
+
+function _find_duplicates(symbols::NTuple{N,Symbol}) where N
+    deja_vu = Set{Symbol}()
+    duplicated = Set{Symbol}()
+    for s in symbols
+        if s in deja_vu
+            push!(duplicated, s)
+        else
+            push!(deja_vu, s)
+        end
+    end
+    return duplicated 
+end

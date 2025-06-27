@@ -55,6 +55,15 @@ end
     return LArray{Syms}(x[values(ind)])
 end
 
+@propagate_inbounds function Base.getindex(x::AbstractLabelledArray, ind::LArray{Syms}) where Syms
+    return LArray{Syms}(values(x)[values(ind)])
+end
+
+#Fixing ambiguities
+@propagate_inbounds function Base.getindex(x::StaticArrays.TrivialView, ind::LArray{Syms}) where Syms
+    return LArray{Syms}(x[values(ind)])
+end
+
 #===================================================================================================
 Indexing helper functions
 ===================================================================================================#
