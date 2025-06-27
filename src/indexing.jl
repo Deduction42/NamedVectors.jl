@@ -80,6 +80,7 @@ end
 getsvec(d::AbstractDict{Symbol}, ind::NTuple{N,Symbol}) where N = map(k->d[k], SVector{N}(ind))
 getsvec(d::AbstractDict{String}, ind::NTuple{N,Symbol}) where N = map(k->d[string(k)], SVector{N}(ind))
 getsvec(nt::NamedTuple, ind::NTuple{N,Symbol}) where N = SVector{N}(values(nt[ind]))
+getsvec(p::AbstractVector{Pair}, ind::NTuple{N,Symbol}) where N = getsvec(Dict(p), ind)
 
 #No need for branching for integer or range index
 lin_offset(ind::Union{Integer, AbstractRange}, data::AbstractArray) = ind + lin_offset(data)

@@ -20,6 +20,10 @@ Major Changes:
 -   Introduce the SymbolicIndexer type which users can make use of themselves
     -   Operates like a NamedTuple{Syms}(Base.OneTo(length(Syms)))
 
+-   Fixed issue #164 by validation (similar to NamedTuples)
+
+-   Fixed issue #162 (side-effect of new parameterization order)
+
 Breaking Changes:
 -   SLArray is no longer supported (use LArray{Syms, D<:SArray})
 -   SLVector is now a special case of LArray

@@ -1,8 +1,15 @@
 #===================================================================================================
 Basic array functions
 ===================================================================================================#
-Base.strides(A::LArray) = strides(values(A))
-Base.stride(A::LArray, k::Integer) = stride(values(A), k)
+Base.strides(A::AbstractLabelledArray) = strides(values(A))
+Base.stride(A::AbstractLabelledArray, k::Integer) = stride(values(A), k)
+Base.firstindex(A::AbstractLabelledArray) = firstindex(values(A))
+Base.lastindex(A::AbstractLabelledArray)  = lastindex(values(A))
+Base.size(x::AbstractLabelledArray) = size(values(x))
+
+function Base.:(==)(x1::AbstractLabelledArray{Syms1}, x2::AbstractLabelledArray{Syms2}) where {Syms1,Syms2} 
+    return (Syms1==Syms2) && (values(x1)==values(x2))
+end
 
 function Base.similar(x::LArray{Syms,D}, ::Type{S}, dims::NTuple{N,Int}) where {Syms,D,S,N}
     tmp = similar(values(x), S, dims)

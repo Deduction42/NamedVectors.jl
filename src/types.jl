@@ -105,12 +105,6 @@ Base.keys(x::AbstractLabelledArray{Syms}) where Syms = Syms
 function Base.pairs(x::AbstractLabelledArray{Syms}) where Syms
     (Syms[i] => xi for (i, xi) in enumerate(x))
 end
-Base.size(x::AbstractLabelledArray) = size(values(x))
-
-function Base.:(==)(x1::AbstractLabelledArray{Syms1}, x2::AbstractLabelledArray{Syms2}) where {Syms1,Syms2} 
-    return (Syms1==Syms2) && (values(x1)==values(x2))
-end
-
 
 #===================================================================================================
 Display utilities
@@ -120,9 +114,10 @@ struct PrintWrapper{T, N, F, X <: AbstractArray{T, N}} <: AbstractArray{T, N}
     x::X
 end
 
-for f in (:eltype, :length, :ndims, :size, :axes, :eachindex, :stride, :strides)
+for f in (:eltype, :length, :ndims, :size, :axes, :eachindex)
     @eval Base.$f(wrapper::PrintWrapper) = $f(wrapper.x)
 end
+
 Base.getindex(A::PrintWrapper, idxs...) = A.f(A.x, A.x[idxs...], idxs)
 Base.getindex(A::PrintWrapper, idxs::LArray{Syms}) where Syms =  A.f(A.x, A.x[values(idxs)], values(idxs))
 
