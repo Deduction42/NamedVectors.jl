@@ -77,8 +77,8 @@ Shortcut for 'SVector(values(x[ind]))", returns the raw values of "getindex(x, i
     data = values(x)
     return data[lin_offset(vec_ind, data)]
 end
-getsvec(d::AbstractDict{Symbol}, ind::NTuple{N,Symbol}) where N = map(k->d[k], SVector{N}(ind))
-getsvec(d::AbstractDict{String}, ind::NTuple{N,Symbol}) where N = map(k->d[string(k)], SVector{N}(ind))
+getsvec(d::AbstractDict{Symbol}, ind::NTuple{N,Symbol}) where N = map(Fix1(getindex, d), SVector{N}(ind))
+getsvec(d::AbstractDict{String}, ind::NTuple{N,Symbol}) where N = map(Fix1(getindex, d), SVector{N}(map(string, ind)))
 getsvec(nt::NamedTuple, ind::NTuple{N,Symbol}) where N = SVector{N}(values(nt[ind]))
 getsvec(p::AbstractVector{Pair}, ind::NTuple{N,Symbol}) where N = getsvec(Dict(p), ind)
 

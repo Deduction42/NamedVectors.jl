@@ -1,13 +1,10 @@
 ToDo:
 -   Add "merge" functionality (and existing constructors)
--   Add conversion tools including
-    - (::Type{<:AA})(x::AbstractLabelledArray) where AA<:AbstractArray = AA(values(x))
 
 -   Create extensions for (see how it's done for extensions in StaticArrays)
-    - ArrayInterface
-    - ChainRulesCore
     - PreallocationTools
     - RecursiveArrayTools
+
 -   Copy the existing tests
 
 
@@ -19,6 +16,8 @@ Major Changes:
 
 -   Introduce the SymbolicIndexer type which users can make use of themselves
     -   Operates like a NamedTuple{Syms}(Base.OneTo(length(Syms)))
+
+-   No longer assumes arrays start at 1 (OffsetArrays are supported)
 
 -   Fixed issue #164 by validation (similar to NamedTuples)
 

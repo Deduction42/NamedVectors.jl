@@ -1,10 +1,12 @@
 import Base.@assert
 import Base.@propagate_inbounds
+import Base.Fix1 
+import Base.Fix2
 using StaticArrays 
 
-abstract type AbstractLabelledArray{Syms,T,N} <: AbstractArray{T,N} end
-const AbstractLabelledMatrix{Syms,T} = AbstractLabelledArray{Syms,T,2} 
-const AbstractLabelledVector{Syms,T} = AbstractLabelledArray{Syms,T,1} 
+abstract type AbstractLabelledArray{Syms, T, N} <: AbstractArray{T, N} end
+const AbstractLabelledMatrix{Syms, T} = AbstractLabelledArray{Syms, T, 2} 
+const AbstractLabelledVector{Syms, T} = AbstractLabelledArray{Syms, T, 1} 
 
 """
     LArray{Syms,D<:AbstractArray,T,N}
@@ -12,28 +14,28 @@ const AbstractLabelledVector{Syms,T} = AbstractLabelledArray{Syms,T,1}
 Wraps an array of type "D<:AbstractArray{T,N}" with a list of symbolic names.
 These names can be used to index into the original array linearly.
 """
-struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
+struct LArray{Syms, D<:AbstractArray, T, N} <: AbstractLabelledArray{Syms, T, N}
     data::D
-    function LArray{Syms,D,T,N}(data::AbstractArray) where {Syms,D,T,N} 
-        (D <: AbstractArray{T,N}) || throw(ArgumentError("Data type parameter $(D) must be of type AbstractArray{$(T),$(N)}"))
+    function LArray{Syms, D, T, N}(data::AbstractArray) where {Syms, D, T, N} 
+        (D <: AbstractArray{T, N}) || throw(ArgumentError("Data type parameter $(D) must be of type AbstractArray{$(T),$(N)}"))
         _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
-        return new{Syms,D,T,N}(data)
+        return new{Syms, D, T, N}(data)
     end
-    function LArray{Syms,D}(data::AbstractArray) where {Syms,T,N,D<:AbstractArray{T,N}} 
+    function LArray{Syms,D}(data::AbstractArray) where {Syms, T, N, D<:AbstractArray{T,N}} 
         _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
-        return new{Syms,D,T,N}(data)
+        return new{Syms, D, T, N}(data)
     end
-    function LArray{Syms}(data::D) where {Syms,T,N,D<:AbstractArray{T,N}} 
+    function LArray{Syms}(data::D) where {Syms, T, N, D<:AbstractArray{T,N}} 
         _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
-        return new{Syms,D,T,N}(data)
+        return new{Syms, D, T, N}(data)
     end
 end
 
-const LVector{Syms,D,T} = LArray{Syms,D,T,1}
-const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
+const LVector{Syms, D, T} = LArray{Syms, D, T, 1}
+const LMatrix{Syms, D, T} = LArray{Syms, D, T, 2}
 
 
 """
@@ -42,9 +44,9 @@ const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
 A special type of "LArray" that is designed to mimic the NamedTuple API. Since the underlying data
 is actually a Tuple, it is essentially a NamedTuple with a uniform type and vector-like behaviour
 """
-const SLVector{Syms,T,L} = LArray{Syms,SVector{L,T},T,1}
-SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L} = LArray{Syms}(SVector{L,T}(data))
-SLVector{Syms,T}(data::AbstractArray) where {Syms,T} = LArray{Syms}(SVector{length(Syms),T}(data))
+const SLVector{Syms, T, L} = LArray{Syms,SVector{L, T}, T, 1}
+SLVector{Syms, T, L}(data::AbstractArray) where {Syms, T, L} = LArray{Syms}(SVector{L,T}(data))
+SLVector{Syms, T}(data::AbstractArray) where {Syms, T} = LArray{Syms}(SVector{length(Syms),T}(data))
 SLVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(SVector{length(Syms)}(data))
 
 #===================================================================================================
@@ -56,13 +58,15 @@ LArray{Syms,D}(x::Any) where {Syms,D} = LArray{Syms}(convert(D, getsvec(x, Syms)
 SLVector{Syms}(x::Any) where {Syms} = SLVector{Syms}(getsvec(x, Syms))
 LArray{Syms}(x::Any) where {Syms} = SLVector{Syms}(x)
 LArray(x::Any) = SLVector(x)
+SLVector(;kwargs...) = SLVector(values(kwargs))
 LArray(;kwargs...) = SLVector(;kwargs...)
+SLVector(x::LArray; kwargs...) = merge(x, values(kwargs))
+LArray(x::LArray; kwargs...) = SLVector(x; kwargs...)
 
 #Interop with Tuple/NamedTuple
 SLVector{Syms}(x::Tuple) where {Syms} = SLVector{Syms}(SVector(x))
 Base.Tuple(x::AbstractLabelledArray{Syms,<:SArray}) where {Syms} = Tuple(values(x))
 SLVector(x::NamedTuple{Syms}) where Syms = SLVector{Syms}(SVector(values(x)))
-SLVector(;kwargs...) = SLVector(values(kwargs))
 Base.NamedTuple(x::AbstractLabelledArray{Syms}) where Syms = NamedTuple{Syms}(NTuple{length(syms),eltype(x)}(values(x)))
 
 #Cross-conversion
@@ -78,7 +82,7 @@ SLVector{Syms}(data::AbstractLabelledArray) where {Syms} = SLVector{Syms}(getsve
 Base.convert(::Type{AT}, x::AT) where {AT<:LArray} = x
 Base.convert(::Type{AT}, x::LArray) where {AT<:Array} = convert(AT, values(x))
 Base.convert(::Type{AT}, x::LArray) where {AT<:StaticArray} = convert(AT, values(x))
-
+convertdata(::Type{AT}, x::LArray{Syms}) where {Syms, AT<:AbstractArray} = LArray{Syms}(convert(AT, values(x)))
 
 """
     SymbolicIndexer{Syms}
@@ -101,10 +105,14 @@ NamedTuple API compliance
 Base.values(x::AbstractLabelledArray) = getfield(x, :data)
 Base.propertynames(x::AbstractLabelledArray{Syms}) where Syms = Syms
 Base.keys(x::AbstractLabelledArray{Syms}) where Syms = Syms
-@inline symnames(::Type{<:LArray{Syms}}) where {Syms} = Syms
+Base.merge(x1::LArray, x2::LArray) = LArray(merge(convert(NamedTuple, x1), convert(NamedTuple, x2)))
+Base.merge(x1::LArray, x2::NamedTuple) = LArray(merge(convert(NamedTuple, x1), x2))
+
 function Base.pairs(x::AbstractLabelledArray{Syms}) where Syms
     (Syms[i] => xi for (i, xi) in enumerate(x))
 end
+
+@inline symnames(::Type{<:LArray{Syms}}) where {Syms} = Syms
 
 #===================================================================================================
 Display utilities
