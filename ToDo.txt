@@ -1,10 +1,7 @@
 ToDo:
--   Add "merge" functionality (and existing constructors)
-
--   Create extensions for (see how it's done for extensions in StaticArrays)
-    - PreallocationTools
-    - RecursiveArrayTools
-
+-   Add the remaining Array functionality
+-   Add the macros
+-   Add the "patch" files for things like ChainRulesCore
 -   Copy the existing tests
 
 
