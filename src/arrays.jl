@@ -72,8 +72,10 @@ end
 #===================================================================================================
 SciML interfaces (may want this as extensions)
 ===================================================================================================#
-#=
 import ArrayInterface
+import PreallocationTools
+import PreallocationTools.ForwardDiff 
+
 function ArrayInterface.ismutable(::Type{<:LArray{Syms,D,T,N}}) where {Syms,D,T,N}
     return ArrayInterface.ismutable(D)
 end
@@ -88,15 +90,14 @@ function ArrayInterface.undefmatrix(x::LArray{Syms,D,T,N}) where {Syms,D,T,N}
 end
 
 function PreallocationTools.get_tmp(dc::PreallocationTools.DiffCache, 
-    u::LArray{Syms,D,T,N}) where {Syms, D, T<:ForwardDiff.Dual, N}
+        u::LArray{Syms,D,T,N}) where {Syms, D, T<:ForwardDiff.Dual, N}
     nelem = div(sizeof(T), sizeof(eltype(dc.dual_du))) * length(dc.du)
     if nelem > length(dc.dual_du)
         PreallocationTools.enlargedualcache!(dc, nelem)
     end
-    _x = ArrayInterface.restructure(dc.du, reinterpret(T, view(dc.dual_du, 1:nelem)))
-    return LabelledArrays.LArray{T, N, D, Syms}(_x)
+    data = ArrayInterface.restructure(dc.du, reinterpret(T, view(dc.dual_du, 1:nelem)))
+    return LArray{Syms,D,T,N}(data)
 end
-=#
 
 #===================================================================================================
 Static array interface

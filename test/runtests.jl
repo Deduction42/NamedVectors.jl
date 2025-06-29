@@ -49,3 +49,5 @@ end
 @testset "Aqua.jl" begin
     Aqua.test_all(NamedVectors)
 end
+
+nothing

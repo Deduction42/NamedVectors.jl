@@ -4,9 +4,9 @@ import Base.Fix1
 import Base.Fix2
 using StaticArrays 
 
-abstract type AbstractLabelledArray{Syms, T, N} <: AbstractArray{T, N} end
-const AbstractLabelledMatrix{Syms, T} = AbstractLabelledArray{Syms, T, 2} 
-const AbstractLabelledVector{Syms, T} = AbstractLabelledArray{Syms, T, 1} 
+abstract type AbstractLabelledArray{Syms,T,N} <: AbstractArray{T,N} end
+const AbstractLabelledMatrix{Syms,T} = AbstractLabelledArray{Syms,T,2} 
+const AbstractLabelledVector{Syms,T} = AbstractLabelledArray{Syms,T,1} 
 
 """
     LArray{Syms,D<:AbstractArray,T,N}
@@ -14,28 +14,28 @@ const AbstractLabelledVector{Syms, T} = AbstractLabelledArray{Syms, T, 1}
 Wraps an array of type "D<:AbstractArray{T,N}" with a list of symbolic names.
 These names can be used to index into the original array linearly.
 """
-struct LArray{Syms, D<:AbstractArray, T, N} <: AbstractLabelledArray{Syms, T, N}
+struct LArray{Syms,D<:AbstractArray,T,N} <: AbstractLabelledArray{Syms,T,N}
     data::D
-    function LArray{Syms, D, T, N}(data::AbstractArray) where {Syms, D, T, N} 
+    function LArray{Syms,D,T,N}(data::AbstractArray) where {Syms,D,T,N} 
         (D <: AbstractArray{T, N}) || throw(ArgumentError("Data type parameter $(D) must be of type AbstractArray{$(T),$(N)}"))
         _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
-        return new{Syms, D, T, N}(data)
+        return new{Syms,D,T,N}(data)
     end
-    function LArray{Syms,D}(data::AbstractArray) where {Syms, T, N, D<:AbstractArray{T,N}} 
+    function LArray{Syms,D}(data::AbstractArray) where {Syms,T,N,D<:AbstractArray{T,N}} 
         _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
-        return new{Syms, D, T, N}(data)
+        return new{Syms,D,T,N}(data)
     end
-    function LArray{Syms}(data::D) where {Syms, T, N, D<:AbstractArray{T,N}} 
+    function LArray{Syms}(data::D) where {Syms,T,N,D<:AbstractArray{T,N}} 
         _check_labels(Syms, :LArray)
         _check_lengths(Syms, data)
-        return new{Syms, D, T, N}(data)
+        return new{Syms,D,T,N}(data)
     end
 end
 
-const LVector{Syms, D, T} = LArray{Syms, D, T, 1}
-const LMatrix{Syms, D, T} = LArray{Syms, D, T, 2}
+const LVector{Syms,D,T} = LArray{Syms,D,T,1}
+const LMatrix{Syms,D,T} = LArray{Syms,D,T,2}
 
 
 """
@@ -44,9 +44,9 @@ const LMatrix{Syms, D, T} = LArray{Syms, D, T, 2}
 A special type of "LArray" that is designed to mimic the NamedTuple API. Since the underlying data
 is actually a Tuple, it is essentially a NamedTuple with a uniform type and vector-like behaviour
 """
-const SLVector{Syms, T, L} = LArray{Syms,SVector{L, T}, T, 1}
-SLVector{Syms, T, L}(data::AbstractArray) where {Syms, T, L} = LArray{Syms}(SVector{L,T}(data))
-SLVector{Syms, T}(data::AbstractArray) where {Syms, T} = LArray{Syms}(SVector{length(Syms),T}(data))
+const SLVector{Syms,T,L} = LArray{Syms,SVector{L,T},T,1}
+SLVector{Syms,T,L}(data::AbstractArray) where {Syms,T,L} = LArray{Syms}(SVector{L,T}(data))
+SLVector{Syms,T}(data::AbstractArray) where {Syms,T} = LArray{Syms}(SVector{length(Syms),T}(data))
 SLVector{Syms}(data::AbstractArray) where {Syms} = LArray{Syms}(SVector{length(Syms)}(data))
 
 #===================================================================================================
@@ -117,7 +117,7 @@ end
 #===================================================================================================
 Display utilities
 ===================================================================================================#
-struct PrintWrapper{T, N, F, X <: AbstractArray{T, N}} <: AbstractArray{T, N}
+struct PrintWrapper{T,N,F,X<:AbstractArray{T,N}} <: AbstractArray{T,N}
     f::F
     x::X
 end

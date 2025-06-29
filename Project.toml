@@ -4,17 +4,21 @@ authors = ["Ruben Gonzalez <ruben.carbonbased@gmail.com> and contributors"]
 version = "0.0.1"
 
 [deps]
+ArrayInterface = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
+PreallocationTools = "d236fae5-4411-538c-8e31-a6e3d9e00b46"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+Aqua = "0.8.0"
+ArrayInterface = "7.19.0"
+PreallocationTools = "0.4.27"
 StaticArrays = "1.9"
 Test = "1.10"
-Aqua = "0.8.0"
 julia = "1.10"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test","Aqua"]
+test = ["Test", "Aqua"]
