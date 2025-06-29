@@ -2,7 +2,7 @@ ToDo:
 -   Add the remaining Array functionality
 -   Add the macros
 -   Add the "patch" files for things like ChainRulesCore
--   Copy the existing tests
+-   Copy the existing tests and work through them
 
 
 Major Changes:
