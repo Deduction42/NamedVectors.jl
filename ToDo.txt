@@ -1,4 +1,10 @@
 ToDo:
+-   Support NamedTuple versions of Syms 
+    -   Modify the verifier
+    -   Create a dispatch case for getting a single symbolic index (for Tuple and NamedTuple Syms)
+    -   Create another dispatch case for getting multiple symbolic indices 
+        -   This should always produce a StaticVector, which likely fixes type stability
+
 -   Add the remaining Array functionality
 -   Add the macros
 -   Add the "patch" files for things like ChainRulesCore
